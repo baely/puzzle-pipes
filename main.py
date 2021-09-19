@@ -1,6 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
 import sys
+from pprint import pprint
 
 if len(sys.argv) > 1:
     p_size = sys.argv[1]
@@ -112,7 +113,9 @@ req = requests.get(f"https://www.puzzle-pipes.com/?size={p_size}")
 task = [int(c, 16) for c in req.text[16650:16650 + SIZE**2]]
 
 param_index = req.text.index("\"param\"")
-param = req.text[param_index + 15:param_index + 271]
+param_sub = req.text[param_index + 15:param_index + 500]
+param_sub_index = param_sub.index("\"")
+param = param_sub[:param_sub_index]
 
 types = [SHAPES[n] for n in task]
 rotations = [0 for _ in task]
@@ -166,25 +169,25 @@ while not locked_game():
 r = "".join([hex(c)[2:] for c in current])
 # Submit
 
-SHAPES = ""
+ans = ""
 for i in range(SIZE):
     for j in range(SIZE):
         if 5 == task[coord_to_pos((i, j))] or 10 == task[coord_to_pos((i, j))]:
             if 2 == rotations[coord_to_pos((i, j))]:
-                SHAPES += "0"
+                ans += "0"
             elif 3 == rotations[coord_to_pos((i, j))]:
-                SHAPES += "1"
+                ans += "1"
             else:
-                SHAPES += str(rotations[coord_to_pos((i, j))])
+                ans += str(rotations[coord_to_pos((i, j))])
         else:
-            SHAPES += str(rotations[coord_to_pos((i, j))])
-SHAPES += ":"
-SHAPES += "".join("0" for _ in range(SIZE ** 2))
+            ans += str(rotations[coord_to_pos((i, j))])
+ans += ":"
+ans += "".join("0" for _ in range(SIZE ** 2))
 
 obj = {
     "jstimer": "0", 
-    "jsPersonalTimer": "1", 
-    "jstimerPersonal": "", 
+    "jsPersonalTimer": "",
+    "jstimerPersonal": "0",
     "stopClock": "0", 
     "fromSolved": "0", 
     "robot": "1",
@@ -192,11 +195,11 @@ obj = {
     "jstimerShow": "00:00",
     "jstimerShowPersonal": "00:00",
     "b": "1", 
-    "size": "0", 
+    "size": p_size,
     "param": param, 
-    "w": "4", 
-    "h": "4", 
-    "ansH": SHAPES,
+    "w": SIZE,
+    "h": SIZE,
+    "ansH": ans,
     "ready": "   Done   "
 }
 
@@ -206,11 +209,10 @@ headers = {
 
 req = requests.post("https://www.puzzle-pipes.com/", obj, headers=headers)
 
-print_box(task)
-print_box()
-
 if "Congratulations" in req.text:
     i = req.text.index("Congratulations")
+    print_box(task)
+    print_box()
     print(req.text[i:i + 56])
 
     soup = BeautifulSoup(req.text, features="html.parser")
