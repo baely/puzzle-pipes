@@ -1,10 +1,14 @@
 import requests
 from bs4 import BeautifulSoup
+import sys
 
+if len(sys.argv) > 1:
+    p_size = sys.argv[1]
+else:
+    p_size = 1
 
 SIZES = [4, 5, 7, 10, 15, 20, 25]
-P_SIZE = 1
-SIZE = SIZES[P_SIZE]
+SIZE = SIZES[p_size]
 
 # 1 Node
 # 2 Bend
@@ -21,7 +25,10 @@ def count_bits(x): return x & 1 + count_bits(x >> 1) if x else 0
 def title_rotate_clockwise(x): return ((x << 3) | (x >> 1)) & 0b1111
 
 
-def coord_to_pos(a): return a[0] * SIZE + a[1]
+def coord_to_pos(coord):
+    if not 0 <= coord[0] < SIZE or not 0 <= coord[1] < SIZE:
+        return -1
+    return coord[0] * SIZE + coord[1]
 
 
 def pos_to_coord(x): return x // SIZE, x % SIZE
@@ -39,7 +46,14 @@ def get_cell(g, x):
 def lock(x): locked[x] = 1
 
 
-def get_neighbours(x): return [x + 1, x - SIZE, x - 1, x + SIZE]
+def get_neighbours(x):
+    p = pos_to_coord(x)
+    return [
+        coord_to_pos((p[0], p[1] + 1)),
+        coord_to_pos((p[0] - 1, p[1])),
+        coord_to_pos((p[0], p[1] - 1)),
+        coord_to_pos((p[0] + 1, p[1]))
+    ]
 
 
 def neighbours_locked(*c):
@@ -74,17 +88,24 @@ def rotate_rule(x, ll, ff, nff):
         rotate_cell(x)
 
 
-def print_box(g=None):
+def print_box(g=None, pp=True):
     if g is None:
         g = current
-    print("Current:")
+    if pp:
+        print("Current:")
+    rows = []
     for index in range(0, SIZE ** 2, SIZE):
-        print("".join([BOX_DRAWING[c] for c in g[index:index + SIZE]]))
-    print("")
+        new_row = [BOX_DRAWING[c] for c in g[index:index + SIZE]]
+        rows.append(new_row)
+        if pp:
+            print("".join(new_row))
+    if pp:
+        print("")
+    return rows
 
 
 # Pull the page
-req = requests.get(f"https://www.puzzle-pipes.com/?size={P_SIZE}")
+req = requests.get(f"https://www.puzzle-pipes.com/?size={p_size}")
 
 # Extract game
 # print(req.text[16650:])
@@ -103,7 +124,7 @@ current = task.copy()
 while not locked_game():
     li = 0
 
-    for i in range(16):
+    for i in range(SIZE ** 2):
         if not get_cell(locked, i):
             neighbours = get_neighbours(i)
             locked_neighbours = neighbours_locked(*neighbours)
