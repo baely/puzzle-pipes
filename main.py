@@ -1,13 +1,18 @@
 import requests
 from bs4 import BeautifulSoup
 
+
+SIZES = [4, 5, 7, 10, 15, 20, 25]
+P_SIZE = 1
+SIZE = SIZES[P_SIZE]
+
 # 1 Node
 # 2 Bend
 # 3 Bar
 # 4 T
-t = [0, 1, 1, 2, 1, 3, 2, 4, 1, 2, 3, 4, 2, 4, 4]
+SHAPES = [0, 1, 1, 2, 1, 3, 2, 4, 1, 2, 3, 4, 2, 4, 4]
 
-box_drawing_chars = [" ", "╺", "╹", "┗", "╸", "━", "┛", "┻", "╻", "┏", "┃", "┣", "┓", "┳", "┫", "╋"]
+BOX_DRAWING = [" ", "╺", "╹", "┗", "╸", "━", "┛", "┻", "╻", "┏", "┃", "┣", "┓", "┳", "┫", "╋"]
 
 
 def count_bits(x): return x & 1 + count_bits(x >> 1) if x else 0
@@ -16,14 +21,14 @@ def count_bits(x): return x & 1 + count_bits(x >> 1) if x else 0
 def title_rotate_clockwise(x): return ((x << 3) | (x >> 1)) & 0b1111
 
 
-def coord_to_pos(a): return a[0] * 4 + a[1]
+def coord_to_pos(a): return a[0] * SIZE + a[1]
 
 
-def pos_to_coord(x): return x // 4, x % 4
+def pos_to_coord(x): return x // SIZE, x % SIZE
 
 
 def get_cell(g, x):
-    if 0 <= x < 16:
+    if 0 <= x < SIZE ** 2:
         return g[x]
     if g is locked:
         return 1
@@ -34,7 +39,7 @@ def get_cell(g, x):
 def lock(x): locked[x] = 1
 
 
-def get_neighbours(x): return [x + 1, x - 4, x - 1, x + 4]
+def get_neighbours(x): return [x + 1, x - SIZE, x - 1, x + SIZE]
 
 
 def neighbours_locked(*c):
@@ -51,7 +56,7 @@ def neighbours_facing(*c):
            ((get_cell(current, c[3]) & 2) << 2)
 
 
-def locked_game(): return sum(locked) == 16
+def locked_game(): return sum(locked) == SIZE ** 2
 
 
 def board_locked(): return locked
@@ -73,23 +78,22 @@ def print_box(g=None):
     if g is None:
         g = current
     print("Current:")
-    print("".join([box_drawing_chars[c] for c in g[0:4]]))
-    print("".join([box_drawing_chars[c] for c in g[4:8]]))
-    print("".join([box_drawing_chars[c] for c in g[8:12]]))
-    print("".join([box_drawing_chars[c] for c in g[12:16]]))
+    for index in range(0, SIZE ** 2, SIZE):
+        print("".join([BOX_DRAWING[c] for c in g[index:index + SIZE]]))
     print("")
 
 
 # Pull the page
-req = requests.get("https://www.puzzle-pipes.com/")
+req = requests.get(f"https://www.puzzle-pipes.com/?size={P_SIZE}")
 
 # Extract game
-task = [int(c, 16) for c in req.text[16550:16566]]
+# print(req.text[16650:])
+task = [int(c, 16) for c in req.text[16650:16650 + SIZE**2]]
 
 param_index = req.text.index("\"param\"")
 param = req.text[param_index + 15:param_index + 271]
 
-types = [t[n] for n in task]
+types = [SHAPES[n] for n in task]
 rotations = [0 for _ in task]
 locked = [0 for _ in task]
 current = task.copy()
@@ -141,20 +145,20 @@ while not locked_game():
 r = "".join([hex(c)[2:] for c in current])
 # Submit
 
-t = ""
-for i in range(4):
-    for j in range(4):
+SHAPES = ""
+for i in range(SIZE):
+    for j in range(SIZE):
         if 5 == task[coord_to_pos((i, j))] or 10 == task[coord_to_pos((i, j))]:
             if 2 == rotations[coord_to_pos((i, j))]:
-                t += "0"
+                SHAPES += "0"
             elif 3 == rotations[coord_to_pos((i, j))]:
-                t += "1"
+                SHAPES += "1"
             else:
-                t += str(rotations[coord_to_pos((i, j))])
+                SHAPES += str(rotations[coord_to_pos((i, j))])
         else:
-            t += str(rotations[coord_to_pos((i, j))])
-t += ":"
-t += "".join("0" for _ in range(16))
+            SHAPES += str(rotations[coord_to_pos((i, j))])
+SHAPES += ":"
+SHAPES += "".join("0" for _ in range(SIZE ** 2))
 
 obj = {
     "jstimer": "0", 
@@ -171,7 +175,7 @@ obj = {
     "param": param, 
     "w": "4", 
     "h": "4", 
-    "ansH": t, 
+    "ansH": SHAPES,
     "ready": "   Done   "
 }
 
