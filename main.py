@@ -1,10 +1,9 @@
 import requests
 from bs4 import BeautifulSoup
 import sys
-from pprint import pprint
 
 if len(sys.argv) > 1:
-    p_size = sys.argv[1]
+    p_size = int(sys.argv[1])
 else:
     p_size = 1
 
