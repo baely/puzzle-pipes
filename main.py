@@ -123,8 +123,10 @@ current = task.copy()
 
 
 # Solve the game
-while not locked_game():
-    li = 0
+li = True
+
+while li:
+    li = False
 
     for i in range(SIZE ** 2):
         if not get_cell(locked, i):
@@ -142,28 +144,30 @@ while not locked_game():
                 if types[i] == 1:
                     if locked_facing or count_bits(locked_not_facing) == 3:
                         lock(i)
-                        li += 1
+                        li = True
 
                 # Bend
                 if types[i] == 2:
                     if count_bits(locked_neighbours) > 2 or locked_neighbours in (3, 6, 9, 12):
                         lock(i)
-                        li += 1
+                        li = True
 
                 # Bar
                 if types[i] == 3:
                     if locked_facing or locked_not_facing:
                         lock(i)
-                        li += 1
+                        li = True
 
                 # T
                 if types[i] == 4:
                     if locked_not_facing or count_bits(locked_facing) == 3:
                         lock(i)
-                        li += 1
+                        li = True
 
-    if not li:
+    if locked_game():
         break
+else:
+    print("Failed.")
 
 r = "".join([hex(c)[2:] for c in current])
 # Submit
@@ -212,7 +216,7 @@ if "Congratulations" in req.text:
     i = req.text.index("Congratulations")
     print_box(task)
     print_box()
-    print(req.text[i:i + 56])
+    print(f"{sum(rotations)} moves.", req.text[i:i + 56])
 
     soup = BeautifulSoup(req.text, features="html.parser")
     form = soup.find("form", {"action": "/hallsubmit.php"})
