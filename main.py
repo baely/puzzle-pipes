@@ -19,22 +19,51 @@ SHAPES = [0, 1, 1, 2, 1, 3, 2, 4, 1, 2, 3, 4, 2, 4, 4]
 BOX_DRAWING = [" ", "╺", "╹", "┗", "╸", "━", "┛", "┻", "╻", "┏", "┃", "┣", "┓", "┳", "┫", "╋"]
 
 
-def count_bits(x): return x & 1 + count_bits(x >> 1) if x else 0
+def count_bits(x: int) -> int:
+    """
+    Count 1 bits present in x
+    :param x:
+    :return:
+    """
+    return x & 1 + count_bits(x >> 1) if x else 0
 
 
-def title_rotate_clockwise(x): return ((x << 3) | (x >> 1)) & 0b1111
+def title_rotate_clockwise(x: int) -> int:
+    """
+    Circular bitshift right
+    :param x:
+    :return:
+    """
+    return ((x << 3) | (x >> 1)) & 0b1111
 
 
-def coord_to_pos(coord):
+def coord_to_pos(coord: tuple[int, int]) -> int:
+    """
+    Convert multidimensional coord to single dimensional position
+    :param coord:
+    :return:
+    """
     if not 0 <= coord[0] < SIZE or not 0 <= coord[1] < SIZE:
         return -1
     return coord[0] * SIZE + coord[1]
 
 
-def pos_to_coord(x): return x // SIZE, x % SIZE
+def pos_to_coord(x: int) -> tuple[int, int]:
+    """
+    Convert single dimensional position to multidimensional coord
+    :param x:
+    :return:
+    """
+    return x // SIZE, x % SIZE
 
 
-def get_cell(g, x):
+def get_cell(g: list[int], x: int) -> int:
+    """
+    Get value of a grid g at position x. Provides defaults for locked and current grid
+    :param g:
+    :param x:
+    :return:
+    """
     if 0 <= x < SIZE ** 2:
         return g[x]
     if g is locked:
@@ -43,10 +72,21 @@ def get_cell(g, x):
         return 0
 
 
-def lock(x): locked[x] = 1
+def lock(x: int) -> None:
+    """
+    Lock value at x
+    :param x:
+    :return:
+    """
+    locked[x] = 1
 
 
-def get_neighbours(x):
+def get_neighbours(x: int) -> list[int]:
+    """
+    Return the neighbouring positions to position x
+    :param x:
+    :return:
+    """
     p = pos_to_coord(x)
     return [
         coord_to_pos((p[0], p[1] + 1)),
@@ -56,39 +96,70 @@ def get_neighbours(x):
     ]
 
 
-def neighbours_locked(*c):
+def neighbours_locked(*c: int) -> int:
+    """
+    Returns the locked int of locked neighbours surrounding x
+    :param c:
+    :return:
+    """
     return get_cell(locked, c[0]) + \
            2 * get_cell(locked, c[1]) + \
            4 * get_cell(locked, c[2]) + \
            8 * get_cell(locked, c[3])
 
 
-def neighbours_facing(*c):
+def neighbours_facing(*c: int) -> int:
+    """
+    Returns the facing int of facing neighbours surrounding x
+    :param c:
+    :return:
+    """
     return ((get_cell(current, c[0]) & 4) >> 2) + \
            ((get_cell(current, c[1]) & 8) >> 2) + \
            ((get_cell(current, c[2]) & 1) << 2) + \
            ((get_cell(current, c[3]) & 2) << 2)
 
 
-def locked_game(): return sum(locked) == SIZE ** 2
+def locked_game() -> bool:
+    """
+    If whole board is locked
+    :return:
+    """
+    return sum(locked) == SIZE ** 2
 
 
-def board_locked(): return locked
-
-
-def rotate_cell(x):
+def rotate_cell(x: int) -> None:
+    """
+    Rotate the cell at position x
+    :param x:
+    :return:
+    """
     rotations[x] = (rotations[x] + 3) % 4
     current[x] = title_rotate_clockwise(current[x])
 
 
-def rotate_rule(x, ll, ff, nff):
+def rotate_rule(x: int, ll: int, ff: int, nff: int) -> None:
+    """
+    Rotate the cell at position x until it fits with it's locked neighbours
+    :param x: Position of cell
+    :param ll: Locked neighbours
+    :param ff: Facing neighbours
+    :param nff: Not facing neighbours
+    :return:
+    """
     for _ in range(4):
         if not ((current[x] ^ ff) | (~current[x] ^ nff)) & ll:
             break
         rotate_cell(x)
 
 
-def print_box(g=None, pp=True):
+def print_box(g: list[int] = None, pp: bool = True) -> list[list[str]]:
+    """
+    Prints the grid g or current state
+    :param g: Grid
+    :param pp: Print bool. (or only return)
+    :return:
+    """
     if g is None:
         g = current
     if pp:
