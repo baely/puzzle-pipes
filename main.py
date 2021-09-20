@@ -38,15 +38,16 @@ def flip_int(x: int) -> int:
     return ((x << 2) | (x >> 2)) & 0b1111
 
 
-def coord_to_pos(size: int, coord: tuple[int, int]) -> int:
+def coord_to_pos(size: int, coord: tuple[int, int], default: int) -> int:
     """
     Convert multidimensional coord to single dimensional position
+    :param default:
     :param size:
     :param coord:
     :return:
     """
     if not 0 <= coord[0] < size or not 0 <= coord[1] < size:
-        return -1
+        return default
     return coord[0] * size + coord[1]
 
 
@@ -93,11 +94,13 @@ def is_neighbours(size: int, x: int, y: int) -> int:
     :param y: Pos 2
     :return: Direction or 0
     """
+    if not 0 <= y < size ** 2:
+        return 0
     coord = pos_to_coord(size, x)
-    return (coord_to_pos(size, (coord[0], coord[1] + 1)) == y) * 1 + \
-           (coord_to_pos(size, (coord[0] - 1, coord[1])) == y) * 2 + \
-           (coord_to_pos(size, (coord[0], coord[1] - 1)) == y) * 4 + \
-           (coord_to_pos(size, (coord[0] + 1, coord[1])) == y) * 8
+    return (coord_to_pos(size, (coord[0], coord[1] + 1), -1) == y) * 1 + \
+           (coord_to_pos(size, (coord[0] - 1, coord[1]), -1) == y) * 2 + \
+           (coord_to_pos(size, (coord[0], coord[1] - 1), -1) == y) * 4 + \
+           (coord_to_pos(size, (coord[0] + 1, coord[1]), -1) == y) * 8
 
 
 def is_connected(size: int, g: list[int], x: int, y: int) -> bool:
@@ -121,7 +124,7 @@ def has_locked_neighbour(size: int, g: list[int], x: int) -> int:
     :param x:
     :return:
     """
-    return max([get_cell(size, g, y, 1) for y in get_neighbours(size, x)])
+    return max([get_cell(size, g, y, 2) for y in get_neighbours(size, x)])
 
 
 def get_neighbours(size: int, x: int) -> list[int]:
@@ -133,10 +136,10 @@ def get_neighbours(size: int, x: int) -> list[int]:
     """
     p = pos_to_coord(size, x)
     return [
-        coord_to_pos(size, (p[0], p[1] + 1)),
-        coord_to_pos(size, (p[0] - 1, p[1])),
-        coord_to_pos(size, (p[0], p[1] - 1)),
-        coord_to_pos(size, (p[0] + 1, p[1]))
+        coord_to_pos(size, (p[0], p[1] + 1), -1),
+        coord_to_pos(size, (p[0] - 1, p[1]), -1),
+        coord_to_pos(size, (p[0], p[1] - 1), -1),
+        coord_to_pos(size, (p[0] + 1, p[1]), -1)
     ]
 
 
@@ -232,6 +235,8 @@ def get_first_unlocked(g: list[int]) -> int:
     :param g:
     :return:
     """
+    if 0 not in g:
+        return -1
     return g.index(0)
 
 
@@ -379,15 +384,15 @@ def submit(size: int, p_size: int, task: list[int], current: list[int], rotation
     ans = ""
     for i in range(size):
         for j in range(size):
-            if 5 == task[coord_to_pos(size, (i, j))] or 10 == task[coord_to_pos(size, (i, j))]:
-                if 2 == rotations[coord_to_pos(size, (i, j))]:
+            if 5 == task[coord_to_pos(size, (i, j), -1)] or 10 == task[coord_to_pos(size, (i, j), -1)]:
+                if 2 == rotations[coord_to_pos(size, (i, j), -1)]:
                     ans += "0"
-                elif 3 == rotations[coord_to_pos(size, (i, j))]:
+                elif 3 == rotations[coord_to_pos(size, (i, j), -1)]:
                     ans += "1"
                 else:
-                    ans += str(rotations[coord_to_pos(size, (i, j))])
+                    ans += str(rotations[coord_to_pos(size, (i, j), -1)])
             else:
-                ans += str(rotations[coord_to_pos(size, (i, j))])
+                ans += str(rotations[coord_to_pos(size, (i, j), -1)])
     ans += ":"
     ans += "".join("0" for _ in range(size ** 2))
 
