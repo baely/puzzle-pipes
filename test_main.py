@@ -106,7 +106,12 @@ class Test(TestCase):
         self.assertEqual(0, main.is_neighbours(4, 13, 17))
 
     def test_is_connected(self):
-        self.fail()
+        self.assertEqual(True, main.is_connected(2, [1, 4, 5, 5], 0, 1))
+        self.assertEqual(True, main.is_connected(2, [9, 4, 3, 4], 0, 1))
+        self.assertEqual(False, main.is_connected(2, [8, 8, 3, 6], 0, 1))
+        self.assertEqual(False, main.is_connected(2, [1, 1, 1, 1], 0, 1))
+        self.assertEqual(False, main.is_connected(2, [9, 12, 3, 6], 0, 3))
+        self.assertEqual(True, main.is_connected(2, [9, 0, 2, 0], 0, 2))
 
     def test_has_locked_neighbour(self):
         self.assertEqual(2, main.has_locked_neighbour(2, [0, 0, 0, 0], 0))
@@ -121,28 +126,46 @@ class Test(TestCase):
         self.assertEqual(1, main.has_locked_neighbour(3, [0, 0, 0, 0, 0, 1, 0, 1, 1], 4))
 
     def test_get_neighbours(self):
-        self.fail()
+        self.assertEqual([1, -1, -1, 4], main.get_neighbours(4, 0))
+        self.assertEqual([2, -1, 0, 5], main.get_neighbours(4, 1))
+        self.assertEqual([3, -1, 1, 6], main.get_neighbours(4, 2))
+        self.assertEqual([-1, -1, 2, 7], main.get_neighbours(4, 3))
+        self.assertEqual([46, 35, 44, 55], main.get_neighbours(10, 45))
+        self.assertEqual([-1, 79, 88, 99], main.get_neighbours(10, 89))
+        self.assertEqual([101, 75, -1, 125], main.get_neighbours(25, 100))
+        self.assertEqual([1, -1, -1, 25], main.get_neighbours(25, 0))
 
     def test_neighbours_locked(self):
-        self.fail()
+        self.assertEqual(6, main.neighbours_locked(2, [0, 0, 0, 0], *[1, -1, -1, 2]))
+        self.assertEqual(14, main.neighbours_locked(2, [0, 0, 1, 0], *[1, -1, -1, 2]))
+        self.assertEqual(15, main.neighbours_locked(2, [0, 1, 1, 1], *[1, -1, -1, 2]))
 
     def test_neighbours_facing(self):
-        self.fail()
+        pass
 
     def test_locked_game(self):
-        self.fail()
+        self.assertEqual(True, main.locked_game(4, [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]))
+        self.assertEqual(True, main.locked_game(2, [1, 1, 1, 1]))
+        self.assertEqual(False, main.locked_game(2, [1, 1, 1, 0]))
+        self.assertEqual(False, main.locked_game(2, [1, 0, 0, 0]))
 
     def test_rotate_cell(self):
-        self.fail()
+        # self.assertEqual()
+        pass
 
     def test_rotate_rule(self):
-        self.fail()
+        # self.fail()
+        pass
 
     def test_print_box(self):
-        self.fail()
+        pass
 
     def test_get_first_unlocked(self):
-        self.fail()
+        self.assertEqual(0, main.get_first_unlocked([0, 1, 1, 0]))
+        self.assertEqual(1, main.get_first_unlocked([1, 0, 0, 1]))
+        self.assertEqual(2, main.get_first_unlocked([1, 1, 0, 1]))
+        self.assertEqual(3, main.get_first_unlocked([1, 1, 1, 0]))
+        self.assertEqual(-1, main.get_first_unlocked([1, 1, 1, 1]))
 
     def test_contains_loops(self):
-        self.fail()
+        pass
