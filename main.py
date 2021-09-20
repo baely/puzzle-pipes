@@ -18,6 +18,11 @@ SHAPES = [0, 1, 1, 2, 1, 3, 2, 4, 1, 2, 3, 4, 2, 4, 4]
 
 BOX_DRAWING = [" ", "╺", "╹", "┗", "╸", "━", "┛", "┻", "╻", "┏", "┃", "┣", "┓", "┳", "┫", "╋"]
 
+types = []
+rotations = []
+locked = []
+current = []
+
 
 def count_bits(x: int) -> int:
     """
@@ -35,6 +40,15 @@ def title_rotate_clockwise(x: int) -> int:
     :return:
     """
     return ((x << 3) | (x >> 1)) & 0b1111
+
+
+def flip_int(x: int) -> int:
+    """
+    Double rotate int
+    :param x:
+    :return:
+    """
+    return ((x << 2) | (x >> 2)) & 0b1111
 
 
 def coord_to_pos(coord: tuple[int, int]) -> int:
@@ -81,19 +95,54 @@ def lock(x: int) -> None:
     locked[x] = 1
 
 
-def get_neighbours(x: int) -> list[int]:
+def is_neighbours(x: int, y: int) -> int:
+    # TODO: Efficiency of algo
+    """
+    Determines if pos x and pos y are neighbours. Returns direction x -> y
+    :param x: Pos 1
+    :param y: Pos 2
+    :return: Direction or 0
+    """
+    coord = pos_to_coord(x)
+    return (coord_to_pos((coord[0], coord[1] + 1)) == y) * 1 + \
+           (coord_to_pos((coord[0] - 1, coord[1])) == y) * 2 + \
+           (coord_to_pos((coord[0], coord[1] - 1)) == y) * 4 + \
+           (coord_to_pos((coord[0] + 1, coord[1])) == y) * 8
+
+
+def is_connected(x: int, y: int) -> bool:
+    """
+    Determines if pos x and pos y are connected
+    :param x:
+    :param y:
+    :return:
+    """
+    direction = is_neighbours(x, y)
+    return bool(current[x] & direction and current[y] & flip_int(direction))
+
+
+def has_locked_neighbour(x: int) -> int:
+    """
+    Return if pos x has a locked neighbour
+    :param x:
+    :return:
+    """
+    return max([get_cell(locked, y) for y in get_neighbours(x)])
+
+
+def get_neighbours(x: int) -> set[int]:
     """
     Return the neighbouring positions to position x
     :param x:
     :return:
     """
     p = pos_to_coord(x)
-    return [
+    return {
         coord_to_pos((p[0], p[1] + 1)),
         coord_to_pos((p[0] - 1, p[1])),
         coord_to_pos((p[0], p[1] - 1)),
         coord_to_pos((p[0] + 1, p[1]))
-    ]
+    }
 
 
 def neighbours_locked(*c: int) -> int:
@@ -175,32 +224,79 @@ def print_box(g: list[int] = None, pp: bool = True) -> list[list[str]]:
     return rows
 
 
-# Pull the page
-req = requests.get(f"https://www.puzzle-pipes.com/?size={p_size}")
+def get_first_unlocked() -> int:
+    """
+    Return index of first unlocked pos
+    :return:
+    """
+    return locked.index(0)
 
-# Extract game
-# print(req.text[16650:])
-task = [int(c, 16) for c in req.text[16650:16650 + SIZE**2]]
 
-param_index = req.text.index("\"param\"")
-param_sub = req.text[param_index + 15:param_index + 500]
-param_sub_index = param_sub.index("\"")
-param = param_sub[:param_sub_index]
+def contains_loops(x: int) -> (bool, set[int]):
+    """
+    Detect if loop exists anywhere starting from x
+    :param x:
+    :return:
+    """
+    loop = False
+    checked = set()
+    to_check = [x]
+    prev = None
+    while to_check:
+        curr = to_check.pop()
+        if curr in checked:
+            continue
+        for neighbour in get_neighbours(curr):
+            if is_connected(curr, neighbour):
+                to_check.append(neighbour)
+                if neighbour is not prev:
+                    loop = True
+        checked.add(curr)
+    return loop, checked
 
-types = [SHAPES[n] for n in task]
-rotations = [0 for _ in task]
-locked = [0 for _ in task]
-current = task.copy()
+
+def retrieve_new_game() -> str:
+    # Pull the page
+    req = requests.get(f"https://www.puzzle-pipes.com/?size={p_size}")
+
+    # Extract game
+    # print(req.text[16650:])
+    # task = [int(c, 16) for c in req.text[16650:16650 + SIZE ** 2]]
+
+    param_index = req.text.index("\"param\"")
+    param_sub = req.text[param_index + 15:param_index + 500]
+    param_sub_index = param_sub.index("\"")
+    param = param_sub[:param_sub_index]
+
+    return req.text[16650:16650 + SIZE ** 2]
+
+
+def create_new_game(task: str = None) -> None:
+    global types
+    global rotations
+    global locked
+    global current
+    if task is None:
+        task = retrieve_new_game()
+
+    task = [int(c, 16) for c in task]
+    types = [SHAPES[n] for n in task]
+    rotations = [0 for _ in task]
+    locked = [0 for _ in task]
+    current = task.copy()
 
 
 # Solve the game
 li = True
 
 while li:
+    # Algorithm 1: Simple algorithm
+    # For all cells, checked if the locked neighbours can determine current rotation
+
     li = False
 
     for i in range(SIZE ** 2):
-        if not get_cell(locked, i):
+        if not get_cell(locked, i) and has_locked_neighbour(i):
             neighbours = get_neighbours(i)
             locked_neighbours = neighbours_locked(*neighbours)
             facing_neighbours = neighbours_facing(*neighbours)
@@ -238,7 +334,30 @@ while li:
     if locked_game():
         break
 else:
-    print("Failed.")
+    # Algorithm 2: Complex
+    print("Attempting complex algorithm")
+    print(f"{sum(locked)}/{SIZE**2} locked tiles so far.")
+
+    li = False
+
+    for i in range(SIZE ** 2):
+        if not get_cell(locked, i) and has_locked_neighbour(i):
+            neighbours = get_neighbours(i)
+            locked_neighbours = neighbours_locked(*neighbours)
+            facing_neighbours = neighbours_facing(*neighbours)
+
+            locked_facing = locked_neighbours & facing_neighbours
+            locked_not_facing = locked_neighbours & ~facing_neighbours
+
+            # Node
+
+            # Bend:
+            # - If any 1 side is locked. Opposite side must inverse
+
+            # Bar
+
+            # T
+
 
 r = "".join([hex(c)[2:] for c in current])
 # Submit
