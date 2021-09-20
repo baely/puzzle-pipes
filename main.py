@@ -10,20 +10,10 @@ else:
 SIZES = [4, 5, 7, 10, 15, 20, 25]
 SIZE = SIZES[p_size]
 
-# 1 Node
-# 2 Bend
-# 3 Bar
-# 4 T
+# 1 Node, 2 Bend, 3 Bar, 4 T
 SHAPES = [0, 1, 1, 2, 1, 3, 2, 4, 1, 2, 3, 4, 2, 4, 4]
 
 BOX_DRAWING = [" ", "╺", "╹", "┗", "╸", "━", "┛", "┻", "╻", "┏", "┃", "┣", "┓", "┳", "┫", "╋"]
-
-task = []
-types = []
-rotations = []
-locked = []
-current = []
-param = {}
 
 
 def count_bits(x: int) -> int:
@@ -73,28 +63,27 @@ def pos_to_coord(x: int) -> tuple[int, int]:
     return x // SIZE, x % SIZE
 
 
-def get_cell(g: list[int], x: int) -> int:
+def get_cell(g: list[int], x: int, default: int = None) -> int:
     """
     Get value of a grid g at position x. Provides defaults for locked and current grid
     :param g:
     :param x:
+    :param default:
     :return:
     """
     if 0 <= x < SIZE ** 2:
         return g[x]
-    if g is locked:
-        return 1
-    if g is current:
-        return 0
+    return default
 
 
-def lock(x: int) -> None:
+def lock(g: list[int], x: int) -> None:
     """
     Lock value at x
+    :param g:
     :param x:
     :return:
     """
-    locked[x] = 1
+    g[x] = 1
 
 
 def is_neighbours(x: int, y: int) -> int:
@@ -112,24 +101,26 @@ def is_neighbours(x: int, y: int) -> int:
            (coord_to_pos((coord[0] + 1, coord[1])) == y) * 8
 
 
-def is_connected(x: int, y: int) -> bool:
+def is_connected(g: list[int], x: int, y: int) -> bool:
     """
     Determines if pos x and pos y are connected
+    :param g:
     :param x:
     :param y:
     :return:
     """
     direction = is_neighbours(x, y)
-    return bool(current[x] & direction and current[y] & flip_int(direction))
+    return bool(g[x] & direction and g[y] & flip_int(direction))
 
 
-def has_locked_neighbour(x: int) -> int:
+def has_locked_neighbour(g: list[int], x: int) -> int:
     """
     Return if pos x has a locked neighbour
+    :param g:
     :param x:
     :return:
     """
-    return max([get_cell(locked, y) for y in get_neighbours(x)])
+    return max([get_cell(g, y) for y in get_neighbours(x)])
 
 
 def get_neighbours(x: int) -> list[int]:
@@ -147,48 +138,55 @@ def get_neighbours(x: int) -> list[int]:
     ]
 
 
-def neighbours_locked(*c: int) -> int:
+def neighbours_locked(g: list[int], *c: int) -> int:
     """
     Returns the locked int of locked neighbours surrounding x
+    :param g:
     :param c:
     :return:
     """
-    return get_cell(locked, c[0]) + 2 * get_cell(locked, c[1]) + 4 * get_cell(locked, c[2]) + 8 * get_cell(locked, c[3])
+    return get_cell(g, c[0]) + 2 * get_cell(g, c[1]) + 4 * get_cell(g, c[2]) + 8 * get_cell(g, c[3])
 
 
-def neighbours_facing(*c: int) -> int:
+def neighbours_facing(g: list[int], *c: int) -> int:
     """
     Returns the facing int of facing neighbours surrounding x
+    :param g:
     :param c:
     :return:
     """
-    return ((get_cell(current, c[0]) & 4) >> 2) + \
-           ((get_cell(current, c[1]) & 8) >> 2) + \
-           ((get_cell(current, c[2]) & 1) << 2) + \
-           ((get_cell(current, c[3]) & 2) << 2)
+    return ((get_cell(g, c[0]) & 4) >> 2) + \
+           ((get_cell(g, c[1]) & 8) >> 2) + \
+           ((get_cell(g, c[2]) & 1) << 2) + \
+           ((get_cell(g, c[3]) & 2) << 2)
 
 
-def locked_game() -> bool:
+def locked_game(g: list[int]) -> bool:
     """
     If whole board is locked
+    :param g:
     :return:
     """
-    return sum(locked) == SIZE ** 2
+    return sum(g) == SIZE ** 2
 
 
-def rotate_cell(x: int) -> None:
+def rotate_cell(rg: list[int], cg: list[int], x: int) -> None:
     """
     Rotate the cell at position x
+    :param cg:
+    :param rg:
     :param x:
     :return:
     """
-    rotations[x] = (rotations[x] + 3) % 4
-    current[x] = title_rotate_clockwise(current[x])
+    rg[x] = (rg[x] + 3) % 4
+    cg[x] = title_rotate_clockwise(cg[x])
 
 
-def rotate_rule(x: int, ll: int, ff: int, nff: int) -> None:
+def rotate_rule(rg: list[int], cg: list[int], x: int, ll: int, ff: int, nff: int) -> None:
     """
     Rotate the cell at position x until it fits with it's locked neighbours
+    :param cg:
+    :param rg:
     :param x: Position of cell
     :param ll: Locked neighbours
     :param ff: Facing neighbours
@@ -196,20 +194,18 @@ def rotate_rule(x: int, ll: int, ff: int, nff: int) -> None:
     :return:
     """
     for _ in range(4):
-        if not ((current[x] ^ ff) | (~current[x] ^ nff)) & ll:
+        if not ((cg[x] ^ ff) | (~cg[x] ^ nff)) & ll:
             break
-        rotate_cell(x)
+        rotate_cell(rg, cg, x)
 
 
-def print_box(g: list[int] = None, pp: bool = True) -> list[list[str]]:
+def print_box(g: list[int], pp: bool = True) -> list[list[str]]:
     """
     Prints the grid g or current state
     :param g: Grid
     :param pp: Print bool. (or only return)
     :return:
     """
-    if g is None:
-        g = current
     if pp:
         print("Current:")
     rows = []
@@ -223,17 +219,19 @@ def print_box(g: list[int] = None, pp: bool = True) -> list[list[str]]:
     return rows
 
 
-def get_first_unlocked() -> int:
+def get_first_unlocked(g: list[int]) -> int:
     """
     Return index of first unlocked pos
+    :param g:
     :return:
     """
-    return locked.index(0)
+    return g.index(0)
 
 
-def contains_loops(x: int) -> (bool, set[int]):
+def contains_loops(g: list[int], x: int) -> (bool, set[int]):
     """
     Detect if loop exists anywhere starting from x
+    :param g:
     :param x:
     :return:
     """
@@ -246,7 +244,7 @@ def contains_loops(x: int) -> (bool, set[int]):
         if curr in checked:
             continue
         for neighbour in get_neighbours(curr):
-            if is_connected(curr, neighbour):
+            if is_connected(g, curr, neighbour):
                 to_check.append(neighbour)
                 if neighbour is not prev:
                     loop = True
@@ -254,8 +252,7 @@ def contains_loops(x: int) -> (bool, set[int]):
     return loop, checked
 
 
-def retrieve_new_game() -> str:
-    global param
+def retrieve_new_game() -> (str, dict):
     # Pull the page
     req = requests.get(f"https://www.puzzle-pipes.com/?size={p_size}")
 
@@ -268,17 +265,18 @@ def retrieve_new_game() -> str:
     param_sub_index = param_sub.index("\"")
     param = param_sub[:param_sub_index]
 
-    return req.text[16650:16650 + SIZE ** 2]
+    return req.text[16650:16650 + SIZE ** 2], param
 
 
-def create_new_game(task_str: str = None) -> None:
-    global task
-    global types
-    global rotations
-    global locked
-    global current
+def create_new_game(task_str: str = None) -> (list[int], list[int], list[int], list[int], list[int], dict):
+    # global task
+    # global types
+    # global rotations
+    # global locked
+    # global current
+    param = {}
     if task_str is None:
-        task_str = retrieve_new_game()
+        task_str, param = retrieve_new_game()
 
     task = [int(c, 16) for c in task_str]
     types = [SHAPES[n] for n in task]
@@ -286,8 +284,10 @@ def create_new_game(task_str: str = None) -> None:
     locked = [0 for _ in task]
     current = task.copy()
 
+    return task, types, rotations, locked, current, param
 
-def solve() -> None:
+
+def solve(types: list[int], rotations: list[int], locked: list[int], current: list[int]) -> None:
     # Solve the game
     li = True
 
@@ -298,7 +298,7 @@ def solve() -> None:
         li = False
 
         for i in range(SIZE ** 2):
-            if not get_cell(locked, i) and has_locked_neighbour(i):
+            if not get_cell(locked, i) and has_locked_neighbour(locked, i):
                 neighbours = get_neighbours(i)
                 locked_neighbours = neighbours_locked(*neighbours)
                 facing_neighbours = neighbours_facing(*neighbours)
@@ -307,33 +307,33 @@ def solve() -> None:
                 locked_not_facing = locked_neighbours & ~facing_neighbours
 
                 if locked_neighbours:
-                    rotate_rule(i, locked_neighbours, locked_facing, locked_not_facing)
+                    rotate_rule(rotations, current, i, locked_neighbours, locked_facing, locked_not_facing)
 
                     # Node
                     if types[i] == 1:
                         if locked_facing or count_bits(locked_not_facing) == 3:
-                            lock(i)
+                            lock(locked, i)
                             li = True
 
                     # Bend
                     if types[i] == 2:
                         if count_bits(locked_neighbours) > 2 or locked_neighbours in (3, 6, 9, 12):
-                            lock(i)
+                            lock(locked, i)
                             li = True
 
                     # Bar
                     if types[i] == 3:
                         if locked_facing or locked_not_facing:
-                            lock(i)
+                            lock(locked, i)
                             li = True
 
                     # T
                     if types[i] == 4:
                         if locked_not_facing or count_bits(locked_facing) == 3:
-                            lock(i)
+                            lock(locked, i)
                             li = True
 
-        if locked_game():
+        if locked_game(locked):
             break
     else:
         pass
@@ -362,7 +362,7 @@ def solve() -> None:
         #         # T
 
 
-def submit() -> None:
+def submit(task: list[int], current: list[int], rotations: list[int], param: dict) -> None:
     # r = "".join([hex(c)[2:] for c in current])
 
     ans = ""
@@ -408,7 +408,7 @@ def submit() -> None:
     if "Congratulations" in req.text:
         i = req.text.index("Congratulations")
         print_box(task)
-        print_box()
+        print_box(current)
         print(f"{sum(rotations)} moves.", req.text[i:i + 56])
 
         soup = BeautifulSoup(req.text, features="html.parser")
@@ -425,7 +425,11 @@ def submit() -> None:
         print(req.text)
 
 
+def main() -> None:
+    task, types, rotations, locked, current, param = create_new_game()
+    solve(types, rotations, locked, current)
+    submit(task, current, rotations, param)
+
+
 if __name__ == '__main__':
-    create_new_game()
-    solve()
-    submit()
+    main()
